@@ -17,8 +17,11 @@ export async function answerQuestion(question: string, chunks: {text: string; so
         ],
     });
 
-    const block = response.content[0];
-    if(block.type !== "text"){
+    // content is a list of blocks, not just the answer. Sonnet 5 runs adaptive
+    // thinking by default, so a thinking block often sits at index 0 — find the
+    // text block rather than assuming its position.
+    const block = response.content.find((b) => b.type === "text");
+    if(!block){
         throw new Error("Claude did not return a text response");
     }
     return block.text;
