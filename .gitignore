@@ -39,3 +39,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# local test fixtures (not ours to redistribute)
+*.pdf
+
+# personal planning notes, not project docs
+project1-rag-doc-qa-build-guide.md
