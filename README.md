@@ -3,9 +3,11 @@
 Upload PDF, TXT, or Markdown files and ask questions about them. Answers are generated **only** from the contents of your documents, with the source file cited for each claim — and an explicit "I don't know based on the documents provided" when the answer isn't there.
 
 **Live:** https://rag-doc-qa-six.vercel.app
+**Demo (40S):** https://www.loom.com/share/1f4084e8ccf84ac4aa2748ec1cd7662e
 
 
 ![Document Q&A](docs/screenshot.png)
+
 
 ---
 
