@@ -32,18 +32,27 @@ export default function Home() {
       body.append("file", file);
 
       const res = await fetch("/api/ingest", { method: "POST", body });
-      const data = await res.json();
 
-      if (!res.ok) {
-        setUploadError(data.error ?? "Upload failed");
+      // A platform-level failure (504 timeout, 413 too large) returns an HTML
+      // page, not our JSON. Parse defensively so the status still surfaces.
+      let data: { error?: string; name?: string; chunks?: number } = {};
+      try {
+        data = await res.json();
+      } catch {
+        /* non-JSON response */
+      }
+
+      if (!res.ok || typeof data.name !== "string") {
+        setUploadError(data.error ?? `Upload failed (HTTP ${res.status})`);
         return;
       }
+      const name = data.name;
 
       // Re-uploading the same filename overwrites its chunks in the index,
       // so replace rather than append to keep this list truthful.
       setDocs((prev) => [
-        ...prev.filter((d) => d.name !== data.name),
-        { name: data.name, chunks: data.chunks },
+        ...prev.filter((d) => d.name !== name),
+        { name, chunks: data.chunks ?? 0 },
       ]);
     } catch {
       setUploadError("Could not reach the server");
@@ -68,17 +77,27 @@ export default function Home() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ question: trimmed }),
       });
-      const data = await res.json();
+
+      let data: { error?: string; answer?: string; source?: string[] } = {};
+      try {
+        data = await res.json();
+      } catch {
+        /* non-JSON response */
+      }
 
       if (!res.ok) {
-        setAskError(data.error ?? "Query failed");
+        setAskError(data.error ?? `Query failed (HTTP ${res.status})`);
         setQuestion(trimmed);
         return;
       }
 
       setTurns((prev) => [
         ...prev,
-        { question: trimmed, answer: data.answer, sources: data.source ?? [] },
+        {
+          question: trimmed,
+          answer: data.answer ?? "",
+          sources: data.source ?? [],
+        },
       ]);
     } catch {
       setAskError("Could not reach the server");
