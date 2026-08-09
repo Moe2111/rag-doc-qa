@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 type Doc = { name: string; chunks: number };
 
@@ -10,8 +10,15 @@ type Turn = {
   sources: string[];
 };
 
+const STARTERS = [
+  "What is this document about?",
+  "Summarise the main argument",
+  "What are the key findings?",
+];
+
 export default function Home() {
   const fileInput = useRef<HTMLInputElement>(null);
+  const endOfThread = useRef<HTMLDivElement>(null);
 
   const [docs, setDocs] = useState<Doc[]>([]);
   const [uploading, setUploading] = useState(false);
@@ -22,6 +29,11 @@ export default function Home() {
   const [turns, setTurns] = useState<Turn[]>([]);
   const [asking, setAsking] = useState(false);
   const [askError, setAskError] = useState<string | null>(null);
+
+  // Keep the newest answer in view as the thread grows.
+  useEffect(() => {
+    endOfThread.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+  }, [turns, asking]);
 
   async function handleUpload(file: File) {
     setUploading(true);
@@ -62,9 +74,8 @@ export default function Home() {
     }
   }
 
-  async function handleAsk(e: React.FormEvent) {
-    e.preventDefault();
-    const trimmed = question.trim();
+  async function ask(text: string) {
+    const trimmed = text.trim();
     if (!trimmed || asking) return;
 
     setAsking(true);
@@ -107,11 +118,13 @@ export default function Home() {
     }
   }
 
+  const started = turns.length > 0 || asking;
+
   return (
-    <div className="flex flex-1 justify-center bg-stone-50 px-4 pb-28 pt-12 dark:bg-neutral-950 sm:px-6">
+    <div className="flex flex-1 justify-center bg-stone-50 px-4 pb-32 pt-12 dark:bg-neutral-950 sm:px-6">
       <main className="flex w-full max-w-2xl flex-col gap-10">
         {/* Header */}
-        <header className="flex flex-col gap-2.5">
+        <header className="flex flex-col gap-3">
           <div className="flex items-center gap-2.5">
             <span
               aria-hidden
@@ -122,15 +135,48 @@ export default function Home() {
             </h1>
           </div>
           <p className="text-[0.9375rem] leading-6 text-neutral-600 dark:text-neutral-400">
-            Upload a PDF, TXT, or Markdown file and ask questions about it.
-            Every answer is drawn only from what your documents actually say —
-            with the source cited, or an honest{" "}
-            <span className="text-neutral-800 dark:text-neutral-200">
-              &ldquo;I don&rsquo;t know&rdquo;
+            Ask questions about your own documents and get answers built{" "}
+            <span className="text-neutral-900 dark:text-neutral-100">
+              only from what they actually say
             </span>{" "}
-            when they don&rsquo;t cover it.
+            — never from the model&rsquo;s general knowledge.
           </p>
         </header>
+
+        {/* How it works — only before the first question */}
+        {!started && (
+          <section className="grid gap-px overflow-hidden rounded-xl border border-neutral-200 bg-neutral-200 dark:border-neutral-800 dark:bg-neutral-800 sm:grid-cols-3">
+            {[
+              {
+                n: "1",
+                title: "Upload",
+                body: "A PDF, TXT, or Markdown file. It's split into passages and indexed by meaning.",
+              },
+              {
+                n: "2",
+                title: "Ask",
+                body: "Your question is matched against those passages — by meaning, not keywords.",
+              },
+              {
+                n: "3",
+                title: "Read the citation",
+                body: "The answer names the file it came from, so you can check it.",
+              },
+            ].map((step) => (
+              <div
+                key={step.n}
+                className="flex flex-col gap-1.5 bg-white p-4 dark:bg-neutral-900"
+              >
+                <span className="text-[0.6875rem] font-medium uppercase tracking-wider text-teal-800 dark:text-teal-500">
+                  {step.n}. {step.title}
+                </span>
+                <p className="text-[0.8125rem] leading-5 text-neutral-600 dark:text-neutral-400">
+                  {step.body}
+                </p>
+              </div>
+            ))}
+          </section>
+        )}
 
         {/* Upload */}
         <section className="flex flex-col gap-3">
@@ -167,7 +213,10 @@ export default function Home() {
               <>
                 <Dots />
                 <span className="text-sm text-neutral-600 dark:text-neutral-400">
-                  Extracting, chunking, and indexing…
+                  Extracting, splitting, and indexing…
+                </span>
+                <span className="text-xs text-neutral-500 dark:text-neutral-500">
+                  A few seconds for a short file, longer for a large PDF
                 </span>
               </>
             ) : (
@@ -176,7 +225,8 @@ export default function Home() {
                   Drop a file here, or click to browse
                 </span>
                 <span className="text-xs text-neutral-500 dark:text-neutral-500">
-                  PDF, TXT, or MD
+                  PDF, TXT, or MD · text-based files only (scanned pages
+                  won&rsquo;t work)
                 </span>
               </>
             )}
@@ -199,7 +249,7 @@ export default function Home() {
                     {doc.name}
                   </span>
                   <span className="rounded bg-neutral-100 px-1.5 py-0.5 text-[0.6875rem] tabular-nums text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400">
-                    {doc.chunks}
+                    {doc.chunks} passages
                   </span>
                 </li>
               ))}
@@ -207,15 +257,57 @@ export default function Home() {
           )}
         </section>
 
+        {/* What to expect — only before the first question */}
+        {!started && (
+          <section className="flex flex-col gap-2.5 rounded-xl border border-neutral-200 bg-white p-5 dark:border-neutral-800 dark:bg-neutral-900/40">
+            <h2 className="text-sm font-semibold text-neutral-900 dark:text-neutral-100">
+              What to expect
+            </h2>
+            <ul className="flex flex-col gap-2 text-[0.8125rem] leading-5 text-neutral-600 dark:text-neutral-400">
+              <li>
+                <span className="text-neutral-800 dark:text-neutral-200">
+                  Answers take a few seconds.
+                </span>{" "}
+                Each question is converted to a vector, matched against stored
+                passages, and sent to Claude with those passages as context.
+              </li>
+              <li>
+                <span className="text-neutral-800 dark:text-neutral-200">
+                  It will refuse rather than guess.
+                </span>{" "}
+                Ask something your documents don&rsquo;t cover and it says so,
+                even when the model knows the answer perfectly well. That&rsquo;s
+                the whole point.
+              </li>
+              <li>
+                <span className="text-neutral-800 dark:text-neutral-200">
+                  This is a shared public demo.
+                </span>{" "}
+                Everything uploaded goes into one index, so answers may cite
+                files other visitors added. Don&rsquo;t upload anything private.
+              </li>
+            </ul>
+          </section>
+        )}
+
         {/* Conversation */}
         <section className="flex flex-col gap-8">
-          {turns.length === 0 && !asking && (
-            <div className="rounded-xl border border-neutral-200 bg-white px-5 py-6 dark:border-neutral-800 dark:bg-neutral-900/40">
-              <p className="text-sm leading-6 text-neutral-500 dark:text-neutral-400">
-                {docs.length === 0
-                  ? "Upload a document to get started."
-                  : "Ask something about your documents below."}
-              </p>
+          {!started && docs.length > 0 && (
+            <div className="flex flex-col gap-2.5">
+              <span className="text-[0.6875rem] uppercase tracking-wider text-neutral-400 dark:text-neutral-600">
+                Try asking
+              </span>
+              <div className="flex flex-wrap gap-2">
+                {STARTERS.map((s) => (
+                  <button
+                    key={s}
+                    onClick={() => ask(s)}
+                    className="rounded-lg border border-neutral-200 bg-white px-3 py-1.5 text-[0.8125rem] text-neutral-700 transition-colors hover:border-teal-600 hover:text-teal-900 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-300 dark:hover:border-teal-500 dark:hover:text-teal-300"
+                  >
+                    {s}
+                  </button>
+                ))}
+              </div>
             </div>
           )}
 
@@ -261,19 +353,40 @@ export default function Home() {
           {askError && (
             <p className="text-sm text-red-700 dark:text-red-400">{askError}</p>
           )}
+
+          <div ref={endOfThread} />
         </section>
+
+        <footer className="text-xs text-neutral-400 dark:text-neutral-600">
+          Next.js · Claude · Voyage embeddings · Pinecone · S3 ·{" "}
+          <a
+            href="https://github.com/Moe2111/rag-doc-qa"
+            target="_blank"
+            rel="noreferrer"
+            className="underline underline-offset-2 hover:text-neutral-600 dark:hover:text-neutral-400"
+          >
+            source
+          </a>
+        </footer>
       </main>
 
       {/* Ask */}
       <div className="fixed inset-x-0 bottom-0 bg-gradient-to-t from-stone-50 via-stone-50 to-transparent px-4 pb-6 pt-10 dark:from-neutral-950 dark:via-neutral-950 sm:px-6">
         <form
-          onSubmit={handleAsk}
+          onSubmit={(e) => {
+            e.preventDefault();
+            ask(question);
+          }}
           className="mx-auto flex w-full max-w-2xl gap-2"
         >
           <input
             value={question}
             onChange={(e) => setQuestion(e.target.value)}
-            placeholder="Ask a question about your documents…"
+            placeholder={
+              docs.length === 0
+                ? "Upload a document first…"
+                : "Ask a question about your documents…"
+            }
             className="flex-1 rounded-lg border border-neutral-300 bg-white px-3.5 py-2.5 text-[0.9375rem] text-neutral-900 shadow-sm outline-none transition-colors placeholder:text-neutral-400 focus:border-teal-600 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100 dark:placeholder:text-neutral-600 dark:focus:border-teal-500"
           />
           <button
