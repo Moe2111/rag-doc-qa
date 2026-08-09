@@ -18,9 +18,17 @@ export async function POST(request: Request) {
         return Response.json({error: "question is required"}, {status: 400});
     }
 
+    // Optional: restrict the search to named documents. Anything that isn't an
+    // array of strings is ignored rather than rejected, so a malformed filter
+    // widens the search instead of failing the request.
+    const rawSources = (body as {sources?: unknown}).sources;
+    const sources = Array.isArray(rawSources)
+        ? rawSources.filter((s): s is string => typeof s === "string")
+        : undefined;
+
     try {
         const vector = await embed(question);
-        const matches = await searchSimilar(vector, 4);
+        const matches = await searchSimilar(vector, 4, sources);
 
 
         const chunks = matches.map((m) => ({

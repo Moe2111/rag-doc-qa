@@ -30,6 +30,11 @@ export default function Home() {
   const [asking, setAsking] = useState(false);
   const [askError, setAskError] = useState<string | null>(null);
 
+  // The index is shared across visitors. Default to searching only what this
+  // session uploaded, or "what are the key findings?" answers from a stranger's
+  // document that happens to match more strongly.
+  const [onlyMine, setOnlyMine] = useState(true);
+
   // Keep the newest answer in view as the thread grows.
   useEffect(() => {
     endOfThread.current?.scrollIntoView({ behavior: "smooth", block: "end" });
@@ -83,10 +88,15 @@ export default function Home() {
     setQuestion("");
 
     try {
+      const scoped = onlyMine && docs.length > 0;
+
       const res = await fetch("/api/query", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ question: trimmed }),
+        body: JSON.stringify({
+          question: trimmed,
+          ...(scoped ? { sources: docs.map((d) => d.name) } : {}),
+        }),
       });
 
       let data: { error?: string; answer?: string; source?: string[] } = {};
@@ -239,21 +249,39 @@ export default function Home() {
           )}
 
           {docs.length > 0 && (
-            <ul className="flex flex-wrap gap-2">
-              {docs.map((doc) => (
-                <li
-                  key={doc.name}
-                  className="flex items-center gap-2 rounded-lg border border-neutral-200 bg-white py-1.5 pl-3 pr-2.5 text-sm dark:border-neutral-800 dark:bg-neutral-900"
-                >
-                  <span className="max-w-[16rem] truncate text-neutral-800 dark:text-neutral-200">
-                    {doc.name}
+            <div className="flex flex-col gap-3">
+              <ul className="flex flex-wrap gap-2">
+                {docs.map((doc) => (
+                  <li
+                    key={doc.name}
+                    className="flex items-center gap-2 rounded-lg border border-neutral-200 bg-white py-1.5 pl-3 pr-2.5 text-sm dark:border-neutral-800 dark:bg-neutral-900"
+                  >
+                    <span className="max-w-[16rem] truncate text-neutral-800 dark:text-neutral-200">
+                      {doc.name}
+                    </span>
+                    <span className="rounded bg-neutral-100 px-1.5 py-0.5 text-[0.6875rem] tabular-nums text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400">
+                      {doc.chunks} passages
+                    </span>
+                  </li>
+                ))}
+              </ul>
+
+              <label className="flex cursor-pointer items-start gap-2.5 text-[0.8125rem] leading-5 text-neutral-600 dark:text-neutral-400">
+                <input
+                  type="checkbox"
+                  checked={onlyMine}
+                  onChange={(e) => setOnlyMine(e.target.checked)}
+                  className="mt-0.5 h-3.5 w-3.5 shrink-0 accent-teal-700 dark:accent-teal-500"
+                />
+                <span>
+                  Search only the {docs.length === 1 ? "file" : "files"} I
+                  uploaded.{" "}
+                  <span className="text-neutral-500 dark:text-neutral-500">
+                    Uncheck to search every document in this shared demo index.
                   </span>
-                  <span className="rounded bg-neutral-100 px-1.5 py-0.5 text-[0.6875rem] tabular-nums text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400">
-                    {doc.chunks} passages
-                  </span>
-                </li>
-              ))}
-            </ul>
+                </span>
+              </label>
+            </div>
           )}
         </section>
 
@@ -283,8 +311,9 @@ export default function Home() {
                 <span className="text-neutral-800 dark:text-neutral-200">
                   This is a shared public demo.
                 </span>{" "}
-                Everything uploaded goes into one index, so answers may cite
-                files other visitors added. Don&rsquo;t upload anything private.
+                Everything uploaded goes into one index. Questions are scoped to
+                your own uploads by default, but the files themselves stay
+                searchable by others — don&rsquo;t upload anything private.
               </li>
             </ul>
           </section>

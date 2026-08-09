@@ -21,12 +21,21 @@ export async function upsertVectors(
     await index.upsert({ records: records});
 }
 
-export async function searchSimilar(vector: number[], topK = 4){
+// `sources` restricts the search to specific documents by filename. Without it
+// the query runs against every vector in the index, which means a question
+// about one document can be answered from an unrelated one that happens to
+// match more strongly.
+export async function searchSimilar(
+    vector: number[],
+    topK = 4,
+    sources?: string[]
+){
     const index = getIndex();
     const response  = await index.query({
         vector: vector,
         topK: topK,
         includeMetadata: true,
+        ...(sources?.length ? { filter: { source: { $in: sources } } } : {}),
     });
     return response.matches;
 }
