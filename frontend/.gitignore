@@ -1,8 +1,8 @@
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
 # dependencies
-node_modules/
-.pnp
+/node_modules
+/.pnp
 .pnp.*
 .yarn/*
 !.yarn/patches
@@ -11,14 +11,14 @@ node_modules/
 !.yarn/versions
 
 # testing
-coverage/
+/coverage
 
 # next.js
-.next/
-out/
+/.next/
+/out/
 
 # production
-build/
+/build
 
 # misc
 .DS_Store
@@ -32,8 +32,6 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
-# ...except the template, which carries no secrets and the README depends on
-!.env.example
 
 # vercel
 .vercel
@@ -41,15 +39,3 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
-
-# local test fixtures (not ours to redistribute)
-*.pdf
-
-# personal planning notes, not project docs
-project1-rag-doc-qa-build-guide.md
-
-# python (api)
-.venv/
-__pycache__/
-*.pyc
-.pytest_cache/
